@@ -1,0 +1,10 @@
+# 構建產物
+PDFCompressor/.build/
+PDFCompressor/.python-cache/
+PDFCompressor/build/
+__pycache__/
+
+# 測試文件
+*.pdf
+
+.DS_Store
