@@ -1,41 +1,41 @@
 # compressPDF
 
-高質量 PDF 壓縮工具，思路類似 iLovePDF：只壓縮圖片和清除冗餘數據，不改動文字與向量，壓縮後的 PDF **仍可在 Adobe Illustrator 中正常打開編輯**。
+A high-quality PDF compressor. It only recompresses images and strips redundant data, leaving text and vector graphics untouched — so the compressed PDF **still opens and edits normally in Adobe Illustrator**.
 
-提供兩種用法：命令行腳本 `compress.py`，以及帶液態玻璃界面的 macOS app。
+Two ways to use it: the command-line script `compress.py`, or a macOS app with a Liquid Glass interface.
 
-## 壓縮做了什麼
+## What it does
 
-1. **清除編輯器私有數據**：Illustrator「保留編輯功能」存下的 `/PieceInfo`、頁面縮略圖、XMP 元數據。對 Illustrator 導出的 PDF，這通常是體積的大頭。
-2. **圖片降採樣 + JPEG 重編碼**：按頁寬換算像素上限，只在變小時才替換；CMYK 圖片按 Adobe 約定反相寫入。
-3. **結構優化**：重新 Flate 壓縮所有流、生成對象流、刪除未引用資源。
+1. **Strips editor private data**: the `/PieceInfo` that Illustrator saves with "Preserve Illustrator Editing Capabilities", page thumbnails, and XMP metadata. For PDFs exported from Illustrator, this is usually most of the file size.
+2. **Downsamples images and re-encodes them as JPEG**: the pixel limit is derived from the page width, and an image is only replaced if the result is smaller. CMYK images are written inverted, following the Adobe convention.
+3. **Optimizes structure**: recompresses all streams with Flate, generates object streams, and removes unreferenced resources.
 
-| 等級 | 目標 DPI | JPEG 品質 |
+| Level | Target DPI | JPEG quality |
 |---|---|---|
 | low | 200 | 85 |
-| recommended（默認） | 150 | 75 |
+| recommended (default) | 150 | 75 |
 | extreme | 96 | 50 |
 
-> 為什麼不用 PDFKit / Quartz？經 Quartz 重寫的 PDF（包括「預覽」編輯過的）會丟失字體的 `WinAnsiEncoding`、改寫漸變函數，在 Illustrator 中會變成亂碼並提示「未知的陰影類型」。本工具用 [pikepdf](https://github.com/pikepdf/pikepdf) 直接修改對象結構，未改動的部分原樣保留。
+> **Why not PDFKit / Quartz?** PDFs rewritten by Quartz (including those edited in Preview) lose the fonts' `WinAnsiEncoding` and have their shading functions rewritten. In Illustrator, text then shows up as garbled characters and an "unknown shading type" warning appears. This tool uses [pikepdf](https://github.com/pikepdf/pikepdf) to modify the object structure directly, so everything it doesn't touch is preserved as-is.
 
 ## macOS app
 
-從 [Releases](https://github.com/WenzyWong/compressPDF/releases) 下載 `PDF-Compressor-1.0.0-macOS-arm64.zip`，解壓後首次打開請右鍵選擇「打開」（ad-hoc 簽名，未公證）。
+Download `PDF-Compressor-1.0.0-macOS-arm64.zip` from [Releases](https://github.com/WenzyWong/compressPDF/releases) and unzip it. The first time you open it, right-click the app and choose **Open** (it is ad-hoc signed and not notarized).
 
-- 把 PDF 拖進窗口、點擊選擇，或在 Finder 中用「打開方式」
-- 壓縮結果保存在原文件旁：`xxx-compressed.pdf`
-- 內置獨立 Python 運行環境，無需另外安裝任何東西
-- 需要 macOS 26+、Apple Silicon
+- Drag PDFs into the window, click to choose files, or use **Open With** in Finder
+- Output is saved next to the original as `xxx-compressed.pdf`
+- Bundles its own standalone Python runtime — nothing else to install
+- Requires macOS 26+ on Apple Silicon
 
-### 從源碼構建
+### Building from source
 
 ```bash
-PDFCompressor/build_app.sh   # 輸出 PDFCompressor/build/PDF 壓縮.app
+PDFCompressor/build_app.sh   # outputs PDFCompressor/build/PDF 壓縮.app
 ```
 
-需要 Xcode 或 Command Line Tools（Swift 6.2+）。首次構建會下載 [python-build-standalone](https://github.com/astral-sh/python-build-standalone)（校驗 SHA-256）並安裝 pikepdf、Pillow。
+Requires Xcode or the Command Line Tools (Swift 6.2+). The first build downloads [python-build-standalone](https://github.com/astral-sh/python-build-standalone) (verified by SHA-256) and installs pikepdf and Pillow into it.
 
-## 命令行
+## Command line
 
 ```bash
 pip install pikepdf pillow
