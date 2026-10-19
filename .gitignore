@@ -1,7 +1,7 @@
 # 構建產物
 PDFCompressor/.build/
 PDFCompressor/.python-cache/
-PDFCompressor/build/
+PDFCompressor/build.noindex/
 __pycache__/
 
 # 測試文件

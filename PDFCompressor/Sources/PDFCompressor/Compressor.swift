@@ -1,13 +1,36 @@
 import Foundation
 
+/// PDF 壓縮規格；rawValue 與 compress.py 的等級名一致
 enum Level: String, CaseIterable, Identifiable {
-    case low, recommended, extreme
+    case lossless, high, low, recommended, small, extreme, custom
     var id: Self { self }
     var title: String {
         switch self {
-        case .low: "低"
+        case .lossless: "無損"
+        case .high: "高畫質"
+        case .low: "輕度"
         case .recommended: "推薦"
+        case .small: "小檔案"
         case .extreme: "極限"
+        case .custom: "自定義"
+        }
+    }
+    /// (目標 DPI, JPEG 品質)，與 compress.py 一致；無損和自定義為 nil
+    var settings: (dpi: Int, quality: Int)? {
+        switch self {
+        case .high: (300, 90)
+        case .low: (200, 85)
+        case .recommended: (150, 75)
+        case .small: (120, 60)
+        case .extreme: (96, 50)
+        case .lossless, .custom: nil
+        }
+    }
+    var summary: String {
+        switch self {
+        case .lossless: "只清理冗餘數據，不改動圖片"
+        case .custom: "自行設定圖片 DPI 和 JPEG 品質"
+        default: settings.map { "圖片 \($0.dpi) dpi · JPEG 品質 \($0.quality)" } ?? ""
         }
     }
 }
@@ -19,19 +42,25 @@ struct CompressorError: LocalizedError {
 /// 用 app 內附帶的 Python 運行 compress.py（pikepdf 直接修改對象結構，未改動的部分原樣保留，
 /// 所以輸出仍能被 Illustrator 正常編輯；PDFKit/Quartz 重寫會破壞字體編碼和漸變）。
 enum Compressor {
-    static func compress(_ input: URL, level: Level) async throws -> URL {
+    static func compress(_ input: URL, level: Level, customDPI: Int, customQuality: Int) async throws -> URL {
         guard let resources = Bundle.main.resourceURL else {
             throw CompressorError(errorDescription: "找不到 app 資源目錄")
         }
         let python = resources.appendingPathComponent("python/bin/python3")
         let script = resources.appendingPathComponent("compress.py")
-        let output = uniqueOutputURL(for: input)
+        let output = uniqueOutputURL(for: input, suffix: "-compressed", extension: "pdf")
 
         try await Task.detached {
             let process = Process()
             process.executableURL = python
             // -I: 不受用戶環境變量和 site-packages 影響；-B: 不寫 __pycache__，以免破壞 app 簽名
-            process.arguments = ["-I", "-B", script.path, input.path, output.path, level.rawValue]
+            var arguments = ["-I", "-B", script.path, input.path, output.path]
+            if level == .custom {
+                arguments += ["recommended", "--dpi", "\(customDPI)", "--quality", "\(customQuality)"]
+            } else {
+                arguments.append(level.rawValue)
+            }
+            process.arguments = arguments
             let stderr = Pipe()
             process.standardError = stderr
             process.standardOutput = FileHandle.nullDevice
@@ -51,19 +80,19 @@ enum Compressor {
         }.value
         return output
     }
+}
 
-    /// F1.pdf -> F1-compressed.pdf，已存在則 F1-compressed-2.pdf ...
-    private static func uniqueOutputURL(for input: URL) -> URL {
-        let dir = input.deletingLastPathComponent()
-        let base = input.deletingPathExtension().lastPathComponent + "-compressed"
-        var url = dir.appendingPathComponent(base + ".pdf")
-        var n = 2
-        while FileManager.default.fileExists(atPath: url.path) {
-            url = dir.appendingPathComponent("\(base)-\(n).pdf")
-            n += 1
-        }
-        return url
+/// F1.pdf -> F1-compressed.pdf，已存在則 F1-compressed-2.pdf ...
+func uniqueOutputURL(for input: URL, suffix: String, extension ext: String) -> URL {
+    let dir = input.deletingLastPathComponent()
+    let base = input.deletingPathExtension().lastPathComponent + suffix
+    var url = dir.appendingPathComponent("\(base).\(ext)")
+    var n = 2
+    while FileManager.default.fileExists(atPath: url.path) {
+        url = dir.appendingPathComponent("\(base)-\(n).\(ext)")
+        n += 1
     }
+    return url
 }
 
 func fileSize(_ url: URL) -> Int64 {

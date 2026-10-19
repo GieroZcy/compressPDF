@@ -1,5 +1,5 @@
 #!/bin/zsh
-# 構建 release 版並打包為 build/PDF 壓縮.app（內含獨立 Python + pikepdf + Pillow）
+# 構建 release 版並打包為 build.noindex/PDF Compressor.app（內含獨立 Python + pikepdf + Pillow）
 set -euo pipefail
 cd "${0:A:h}"
 
@@ -31,7 +31,7 @@ fi
 swift build -c release
 # Documents 由 iCloud 同步，會給文件加 Finder 屬性導致簽名失敗，所以先在臨時目錄組裝和簽名
 STAGE=$(mktemp -d)
-APP="$STAGE/PDF 壓縮.app"
+APP="$STAGE/PDF Compressor.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/PDFCompressor "$APP/Contents/MacOS/"
 cp ../compress.py "$APP/Contents/Resources/"
@@ -44,13 +44,13 @@ cat > "$APP/Contents/Info.plist" <<'EOF'
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key><string>PDF 壓縮</string>
-    <key>CFBundleDisplayName</key><string>PDF 壓縮</string>
+    <key>CFBundleName</key><string>PDF Compressor</string>
+    <key>CFBundleDisplayName</key><string>PDF Compressor</string>
     <key>CFBundleIdentifier</key><string>local.pdfcompressor</string>
     <key>CFBundleExecutable</key><string>PDFCompressor</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.0</string>
-    <key>CFBundleVersion</key><string>1</string>
+    <key>CFBundleShortVersionString</key><string>1.1.0</string>
+    <key>CFBundleVersion</key><string>2</string>
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>CFBundleDevelopmentRegion</key><string>zh-Hant</string>
@@ -70,10 +70,13 @@ xattr -cr "$APP"
 find "$APP/Contents/Resources/python" -type f \( -name "*.so" -o -name "*.dylib" -o -perm -u+x \) \
     -exec sh -c 'file -b "$1" | grep -q Mach-O && codesign --force --sign - "$1"' _ {} \; 2>/dev/null
 codesign --force --sign - "$APP"
+# 在臨時目錄驗證：複製回 iCloud 同步的目錄後，iCloud 會再加 Finder 屬性，原地驗證會誤報
+codesign --verify --deep --strict "$APP"
 
-FINAL="build/PDF 壓縮.app"
-rm -rf "$FINAL" && mkdir -p build
+FINAL="build.noindex/PDF Compressor.app"  # .noindex：不被 Spotlight 索引，避免與已安裝的版本重複
+rm -rf "$FINAL" && mkdir -p build.noindex
 ditto --noextattr --norsrc "$APP" "$FINAL"
 rm -rf "$STAGE"
-codesign --verify --deep --strict "$FINAL"
+# 構建副本不登記到 LaunchServices，避免啟動台 / Spotlight 中與已安裝的版本重複
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -u "$FINAL" 2>/dev/null || true
 echo "✓ $FINAL ($(du -sh "$FINAL" | cut -f1))"
