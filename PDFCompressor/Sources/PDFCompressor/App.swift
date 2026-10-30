@@ -1,4 +1,3 @@
-import Combine
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -18,14 +17,14 @@ enum Mode: String, CaseIterable, Identifiable {
     var id: Self { self }
     var title: String {
         switch self {
-        case .compress: "压缩 PDF"
-        case .tiff: "转为 TIFF"
+        case .compress: String(localized: "壓縮 PDF")
+        case .tiff: String(localized: "轉為 TIFF")
         }
     }
 }
 
-@MainActor
-final class Job: ObservableObject, Identifiable {
+@MainActor @Observable
+final class Job: Identifiable {
     enum State {
         case running
         case done(output: URL, before: Int64, after: Int64)
@@ -35,7 +34,7 @@ final class Job: ObservableObject, Identifiable {
     let id = UUID()
     let input: URL
     let mode: Mode
-    @Published var state = State.running
+    var state = State.running
 
     init(input: URL, mode: Mode) {
         self.input = input
@@ -79,12 +78,12 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.top, 36)  // 留出红绿灯按钮的位置
+        .padding(.top, 36)  // 留出紅綠燈按鈕的位置
         .padding(.bottom, 20)
         .frame(width: 460)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .windowBackground()
         .ignoresSafeArea()
-        // 整个窗口都可接收拖放；用 NSItemProvider 读取 Finder 的 file URL，比 dropDestination(for: URL.self) 可靠
+        // 整個窗口都可接收拖放；用 NSItemProvider 讀取 Finder 的 file URL，比 dropDestination(for: URL.self) 可靠
         .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
             for provider in providers {
                 _ = provider.loadObject(ofClass: URL.self) { url, _ in
@@ -97,7 +96,7 @@ struct ContentView: View {
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.pdf], allowsMultipleSelection: true) {
             if case .success(let urls) = $0 { start(urls) }
         }
-        .onOpenURL { start([$0]) }  // Finder“打开方式”或拖到 Dock 图标
+        .onOpenURL { start([$0]) }  // Finder「打開方式」或拖到 Dock 圖標
     }
 
     private var dropZone: some View {
@@ -109,7 +108,7 @@ struct ContentView: View {
                 .contentTransition(.symbolEffect(.replace))
             Text("拖入 PDF 文件")
                 .font(.headline)
-            Text(mode == .compress ? "或点击选择，压缩后保存在原文件旁" : "或点击选择，转换为 TIFF 保存在原文件旁")
+            Text(mode == .compress ? LocalizedStringKey("或點擊選擇，壓縮後保存在原文件旁") : "或點擊選擇，轉換為 TIFF 保存在原文件旁")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .contentTransition(.opacity)
@@ -130,27 +129,27 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 12) {
             switch mode {
             case .compress:
-                OptionRow("规格") {
-                    Picker("规格", selection: $level.animation(.snappy)) {
+                OptionRow("規格") {
+                    Picker("規格", selection: $level.animation(.snappy)) {
                         ForEach(Level.allCases) { level in
                             Text(level.title).tag(level)
-                            if level == .extreme { Divider() }  // “自定义”单独一组
+                            if level == .extreme { Divider() }  // 「自定義」單獨一組
                         }
                     }
                     .labelsHidden()
                     .fixedSize()
                 }
                 if level == .custom {
-                    OptionRow("图片 DPI") { ValueSlider(value: $customDPI, range: 72...600, step: 6) }
-                    OptionRow("JPEG 质量") { ValueSlider(value: $customQuality, range: 30...95, step: 1) }
+                    OptionRow("圖片 DPI") { ValueSlider(value: $customDPI, range: 72...600, step: 6) }
+                    OptionRow("JPEG 品質") { ValueSlider(value: $customQuality, range: 30...95, step: 1) }
                 }
                 Text(level.summary)
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
             case .tiff:
-                OptionRow("分辨率") {
-                    Picker("分辨率", selection: $tiffDPI) {
+                OptionRow("解析度") {
+                    Picker("解析度", selection: $tiffDPI) {
                         ForEach(TIFFOptions.dpiChoices, id: \.self) { Text("\($0)").tag($0) }
                     }
                     .pickerStyle(.segmented)
@@ -163,14 +162,14 @@ struct ContentView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 }
-                OptionRow("压缩") {
-                    Picker("压缩", selection: $tiffCompression) {
+                OptionRow("壓縮") {
+                    Picker("壓縮", selection: $tiffCompression) {
                         ForEach(TIFFOptions.Compression.allCases) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 }
-                Text("LZW 与 ZIP 均为无损压缩：ZIP 通常更小，LZW 兼容性最好。多页 PDF 会输出为多页 TIFF。")
+                Text("LZW 與 ZIP 均為無損壓縮：ZIP 通常更小，LZW 兼容性最好。多頁 PDF 會輸出為多頁 TIFF。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -182,7 +181,7 @@ struct ContentView: View {
     }
 
     private func start(_ urls: [URL]) {
-        // 在开始时复制当前设置，之后切换设置不影响进行中的任务
+        // 在開始時拷貝當前設定，之後切換設定不影響進行中的任務
         let mode = mode, level = level, customDPI = customDPI, customQuality = customQuality
         let tiffOptions = TIFFOptions(dpi: tiffDPI, color: tiffColor, compression: tiffCompression)
         for url in urls {
@@ -207,12 +206,12 @@ struct ContentView: View {
     }
 }
 
-/// 选项面板中的一行：左侧标签固定宽度，右侧控件
+/// 選項面板中的一行：左側標籤固定寬度，右側控件
 struct OptionRow<Content: View>: View {
-    let label: String
+    let label: LocalizedStringKey
     @ViewBuilder let content: Content
 
-    init(_ label: String, @ViewBuilder content: () -> Content) {
+    init(_ label: LocalizedStringKey, @ViewBuilder content: () -> Content) {
         self.label = label
         self.content = content()
     }
@@ -227,7 +226,19 @@ struct OptionRow<Content: View>: View {
     }
 }
 
-/// 整数滑杆 + 右侧数值
+extension View {
+    /// macOS 26 起窗口本身透明，整個窗口是一塊液態玻璃；更早的系統用普通窗口背景色
+    @ViewBuilder func windowBackground() -> some View {
+        if #available(macOS 26, *) {
+            glassEffect(.regular, in: .rect(cornerRadius: 26))
+                .containerBackground(.clear, for: .window)
+        } else {
+            background(Color(nsColor: .windowBackgroundColor))
+        }
+    }
+}
+
+/// 整數滑桿 + 右側數值
 struct ValueSlider: View {
     @Binding var value: Int
     let range: ClosedRange<Int>
@@ -243,7 +254,7 @@ struct ValueSlider: View {
 }
 
 struct JobRow: View {
-    @ObservedObject var job: Job
+    let job: Job
 
     var body: some View {
         HStack(spacing: 12) {
@@ -269,7 +280,7 @@ struct JobRow: View {
     @ViewBuilder private var detail: some View {
         switch job.state {
         case .running:
-            Text(job.mode == .compress ? "压缩中…" : "转换中…")
+            Text(job.mode == .compress ? LocalizedStringKey("壓縮中…") : "轉換中…")
         case let .done(output, before, after):
             Text("\(format(before)) → \(output.pathExtension.uppercased()) \(format(after))")
         case let .failed(message):
@@ -287,7 +298,7 @@ struct JobRow: View {
                     .font(.callout.monospacedDigit().weight(.semibold))
                     .foregroundStyle(.green)
             }
-            Button("在 Finder 中显示", systemImage: "magnifyingglass") {
+            Button("在 Finder 中顯示", systemImage: "magnifyingglass") {
                 NSWorkspace.shared.activateFileViewerSelecting([output])
             }
             .labelStyle(.iconOnly)
