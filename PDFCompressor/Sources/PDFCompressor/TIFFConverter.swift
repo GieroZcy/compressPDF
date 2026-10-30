@@ -3,7 +3,7 @@ import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
-/// TIFF 輸出設定
+/// TIFF 输出设置
 struct TIFFOptions: Sendable {
     enum ColorMode: String, CaseIterable, Identifiable {
         case rgb, cmyk, gray
@@ -17,7 +17,7 @@ struct TIFFOptions: Sendable {
         }
     }
 
-    /// rawValue 是 TIFF 的 Compression 標籤值
+    /// rawValue 是 TIFF 的 Compression 标签值
     enum Compression: Int, CaseIterable, Identifiable {
         case lzw = 5, zip = 8, none = 1
         var id: Self { self }
@@ -25,7 +25,7 @@ struct TIFFOptions: Sendable {
             switch self {
             case .lzw: "LZW"
             case .zip: "ZIP"
-            case .none: "不壓縮"
+            case .none: "不压缩"
             }
         }
     }
@@ -37,20 +37,20 @@ struct TIFFOptions: Sendable {
     var compression = Compression.lzw
 }
 
-/// 用 Quartz 把 PDF 每頁渲染成點陣圖（白底、無透明通道），寫成一個多頁 TIFF。
-/// 輸出是點陣圖，不涉及 Quartz 重寫 PDF 導致 Illustrator 無法編輯的問題。
+/// 用 Quartz 把 PDF 每页渲染成点阵图（白底、无透明通道），写成一个多页 TIFF。
+/// 输出是点阵图，不涉及 Quartz 重写 PDF 导致 Illustrator 无法编辑的问题。
 enum TIFFConverter {
     static func convert(_ input: URL, options: TIFFOptions) async throws -> URL {
         let output = uniqueOutputURL(for: input, suffix: "", extension: "tif")
         try await Task.detached {
             guard let doc = CGPDFDocument(input as CFURL) else {
-                throw CompressorError(errorDescription: "無法讀取這個 PDF")
+                throw CompressorError(errorDescription: "无法读取这个 PDF")
             }
             guard doc.isUnlocked else {
-                throw CompressorError(errorDescription: "PDF 已加密，請先解鎖")
+                throw CompressorError(errorDescription: "PDF 已加密，请先解锁")
             }
             guard let dest = CGImageDestinationCreateWithURL(output as CFURL, UTType.tiff.identifier as CFString, doc.numberOfPages, nil) else {
-                throw CompressorError(errorDescription: "無法創建 TIFF 文件")
+                throw CompressorError(errorDescription: "无法创建 TIFF 文件")
             }
             let properties = [
                 kCGImagePropertyDPIWidth: options.dpi,
@@ -60,20 +60,20 @@ enum TIFFConverter {
 
             for index in 1...doc.numberOfPages {
                 guard let page = doc.page(at: index), let image = render(page, options: options) else {
-                    throw CompressorError(errorDescription: "第 \(index) 頁渲染失敗（分辨率可能過高）")
+                    throw CompressorError(errorDescription: "第 \(index) 页渲染失败（分辨率可能过高）")
                 }
                 CGImageDestinationAddImage(dest, image, properties)
             }
             guard CGImageDestinationFinalize(dest) else {
                 try? FileManager.default.removeItem(at: output)
-                throw CompressorError(errorDescription: "寫入 TIFF 失敗")
+                throw CompressorError(errorDescription: "写入 TIFF 失败")
             }
         }.value
         return output
     }
 
     private static func render(_ page: CGPDFPage, options: TIFFOptions) -> CGImage? {
-        let box = page.getBoxRect(.cropBox)  // 與閱讀器顯示的範圍一致
+        let box = page.getBoxRect(.cropBox)  // 与阅读器显示的范围一致
         let angle = (page.rotationAngle % 360 + 360) % 360
         let size = angle % 180 == 0 ? box.size : CGSize(width: box.height, height: box.width)
         let scale = CGFloat(options.dpi) / 72
@@ -91,7 +91,7 @@ enum TIFFConverter {
         ctx.fill(CGRect(x: 0, y: 0, width: width, height: height))
         ctx.interpolationQuality = .high
         ctx.scaleBy(x: scale, y: scale)
-        // /Rotate 是顯示時順時針旋轉的角度
+        // /Rotate 是显示时顺时针旋转的角度
         switch angle {
         case 90: ctx.translateBy(x: 0, y: box.width); ctx.rotate(by: -.pi / 2)
         case 180: ctx.translateBy(x: box.width, y: box.height); ctx.rotate(by: .pi)

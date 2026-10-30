@@ -2,7 +2,7 @@
 
 A high-quality PDF compressor. It only recompresses images and strips redundant data, leaving text and vector graphics untouched — so the compressed PDF **still opens and edits normally in Adobe Illustrator**.
 
-Two ways to use it: the command-line script `compress.py`, or a macOS app with a Liquid Glass interface. The app can also convert PDFs to compressed TIFF images.
+Two ways to use it: the command-line script `compress.py`, or a native macOS app. The app can also convert PDFs to compressed TIFF images.
 
 ## What it does
 
@@ -24,7 +24,7 @@ Two ways to use it: the command-line script `compress.py`, or a macOS app with a
 
 ## macOS app
 
-Download `PDF-Compressor-1.1.0-macOS-arm64.zip` from [Releases](https://github.com/WenzyWong/compressPDF/releases) and unzip it. The first time you open it, right-click the app and choose **Open** (it is ad-hoc signed and not notarized).
+Download the macOS build from [Releases](https://github.com/WenzyWong/compressPDF/releases) and unzip it. The first time you open it, right-click the app and choose **Open** (it is ad-hoc signed and not notarized).
 
 - **Compress PDF**: pick one of the levels above, or *Custom* to set image DPI (72–600) and JPEG quality (30–95). Output is saved next to the original as `xxx-compressed.pdf`.
 - **Convert to TIFF**: renders each page and saves it next to the original as `xxx.tif` (multi-page PDFs become a multi-page TIFF). Options:
@@ -34,7 +34,7 @@ Download `PDF-Compressor-1.1.0-macOS-arm64.zip` from [Releases](https://github.c
   - White background with no alpha channel, and page rotation respected
 - Drag PDFs into the window, click to choose files, or use **Open With** in Finder
 - Bundles its own standalone Python runtime — nothing else to install
-- Requires macOS 26+ on Apple Silicon
+- Requires macOS 15+ on Apple Silicon
 
 ### Building from source
 
